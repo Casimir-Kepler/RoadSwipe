@@ -1,0 +1,142 @@
+using UnityEngine;
+
+public class ActiveCar : MonoBehaviour
+{
+    private int NewPos;
+    public float PosMultiple = 4;
+
+    public GameObject[] GC_obj;
+    public Gameplay GC;
+
+    private int timerset;
+    private Vector3 BaseRotation;
+
+    public bool attack { get; set; } = false;
+    public Rigidbody rb { get; set; }
+    public Transform tr { get; set; }
+    public float speed { get; set; }
+    public int currentPos { get; set; } = 0;
+    public int boostTimer { get; set; }
+    public int timer { get; set; } = 0;
+
+    private protected void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        tr = GetComponent<Transform>();
+
+        GC_obj = GameObject.FindGameObjectsWithTag("GameController");
+        GC = GC_obj[0].GetComponent<Gameplay>();
+        timerset = GC.timerSet;
+        speed = GC.startSpeed;
+        boostTimer = GC.boostTimer;
+    }
+
+    public void SetStartPosition()
+    {
+        tr.position = new Vector3(0, 2, currentPos * PosMultiple);
+        BaseRotation = new Vector3(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+        NewPos = currentPos;
+    }
+
+    private protected void FixedUpdate()
+    {
+        if (GC.canPlay)
+        {
+            if (tr.position.x >= 1900) tr.position = new Vector3(0, tr.position.y, currentPos * PosMultiple); // Сброс на стартовую позицию
+
+            if (boostTimer > 0) boostTimer--;
+            else speed = GC.startSpeed;
+
+            rb.velocity = new Vector3(1 * speed, rb.velocity.y, 0);
+
+            if (timer == 0 && attack == true) attack = false;
+            if (timer != 0)
+            {
+                if (NewPos > currentPos)
+                {
+                    TurnLeft();
+                }
+                else
+                {
+                    TurnRight();
+                }
+                timer--;
+                if (timer == 1)
+                {
+                    Correction();
+                }
+            }
+        }
+        else
+        {
+            rb.velocity = Vector3.zero;
+        }
+    }
+
+    void TurnLeft()
+    {
+        rb.velocity = new Vector3(1 * speed, rb.velocity.y, 7);
+        if (timer > timerset / 2) tr.rotation = Quaternion.Euler(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y - 1, transform.rotation.eulerAngles.z);
+        else tr.rotation = Quaternion.Euler(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y + 1, transform.rotation.eulerAngles.z);
+    }
+
+    void TurnRight()
+    {
+        rb.velocity = new Vector3(1 * speed, rb.velocity.y, -7);
+        if (timer > timerset / 2) tr.rotation = Quaternion.Euler(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y + 1, transform.rotation.eulerAngles.z);
+        else tr.rotation = Quaternion.Euler(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y - 1, transform.rotation.eulerAngles.z);
+    }
+
+    public void Correction()
+    {
+        currentPos = NewPos;
+        tr.rotation = Quaternion.Euler(BaseRotation.x, BaseRotation.y, BaseRotation.z);
+        rb.velocity = new Vector3(1 * speed, rb.velocity.y, 0);
+        tr.position = new Vector3(tr.position.x, tr.position.y, currentPos * PosMultiple);
+        timer = 0;
+    }
+
+    public void MoveLeft()
+    {
+        if (timer <= 0 && currentPos < 2)
+        {
+            NewPos++;
+            NewPos = Mathf.Clamp(NewPos, -2, 2);
+            timer = timerset;
+        }
+    }
+
+    public void MoveRight()
+    {
+        if (timer <= 0 && currentPos > -2)
+        {
+            NewPos--;
+            NewPos = Mathf.Clamp(NewPos, -2, 2);
+            timer = timerset;
+        }
+    }
+
+    public void PushBack()
+    {
+        tr.position = new Vector3(tr.position.x - 6.5f, tr.position.y, currentPos * PosMultiple);
+    }
+
+    public void Restore()
+    {
+        Correction();
+        currentPos = -1;
+        NewPos = -1;
+        tr.position = new Vector3(0, 2, -1 * PosMultiple);
+    }
+
+    public void BackToLine()
+    {
+        if (timer > timerset / 2)
+        {
+            int Buff = NewPos;
+            NewPos = currentPos;
+            currentPos = Buff;
+            timer = timerset - timer;
+        }
+    }
+}
