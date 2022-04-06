@@ -1,0 +1,193 @@
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class Gameplay : MonoBehaviour
+{
+    [SerializeField] private Player player;
+    [SerializeField] private Bot bot;
+    [SerializeField] private TrackCreator TC;
+    [SerializeField] private GameUI display;
+
+    public int playerStartPos;
+    public int botStartPos;
+
+    private int roundCoins = 0;
+    private bool vibration = true;
+
+    private enum MoveBuffer2
+    {
+        ZERO,
+        LEFT,
+        RIGHT
+    }
+
+    private MoveBuffer2 moveBuffer;
+
+    public int timerSet { get; } = 30;
+    public float startSpeed { get; } = 25;
+    public int boostTimer { get; } = 15 * 5;
+    public bool canPlay { get; set; }
+
+    void Start()
+    {
+        moveBuffer = MoveBuffer2.ZERO;
+
+        GameObject[] GameObjectBuffer;
+
+        if (player == null)
+        {
+            GameObjectBuffer = GameObject.FindGameObjectsWithTag("Player");
+            if (GameObjectBuffer.Length != 0) player = GameObjectBuffer[0].GetComponent<Player>();
+        }
+        
+        if (bot == null)
+        {
+            GameObjectBuffer = GameObject.FindGameObjectsWithTag("Bot");
+            if (GameObjectBuffer.Length != 0) bot = GameObjectBuffer[0].GetComponent<Bot>();
+        }
+
+        SwipeInput.SwipeEvent += CheckInput;
+
+        canPlay = false;
+        display.ShowMainMenu();
+    }
+
+    void FixedUpdate()
+    {
+        if(canPlay){
+            roundCoins++;
+            display.UpdateCoinsOnScreen(roundCoins);
+
+            if (moveBuffer != MoveBuffer2.ZERO && player.DeclareReady)
+            {
+                if (moveBuffer == MoveBuffer2.LEFT)
+                {
+                    player.StartAttack();
+                    player.MoveLeft();
+                    moveBuffer = MoveBuffer2.ZERO;
+                }
+                else if (moveBuffer == MoveBuffer2.RIGHT)
+                {
+                    player.StartAttack();
+                    player.MoveRight();
+                    moveBuffer = MoveBuffer2.ZERO;
+                }
+            }
+
+            if (bot.transform.position.x < player.transform.position.x - 30) bot.Restore(player.transform.position.x, player.speed); // TODO: магические числа
+            if(bot.transform.position.x > player.transform.position.x + 30) bot.SetBoostCollectingFalse();
+            else bot.SetBoostCollectingTrue();
+        } 
+    }
+
+    public void CheckCollision() // --- Обсчет столкновений 
+    {
+        bool playerAttack = player.attack;
+        bool botAttack = bot.attack;
+
+        if (playerAttack == true && botAttack == true) // Столкновение атак
+        { 
+            player.BackToLine();
+            bot.BackToLine();
+        }
+        else if(playerAttack == true && botAttack == false) // Атака игрока на бота
+        {
+            if (bot.currentPos > player.currentPos)
+            {
+                if(bot.currentPos < 2)
+                {
+                    bot.AddAgression(10);
+                    bot.MoveLeft();
+                }
+                else
+                {
+                    bot.AddAgression(20);
+                    bot.PushBack();
+                }
+            }
+            else
+            {
+                if(bot.currentPos > -2)
+                {
+                    bot.AddAgression(10);
+                    bot.MoveRight();
+                }
+                else
+                {
+                    bot.AddAgression(20);
+                    bot.PushBack();
+                }
+            }
+        }
+        else if(playerAttack == false && botAttack == true) // Атака бота на игрока
+        { 
+            if (bot.currentPos > player.currentPos)
+            {
+                if(player.currentPos > -2) player.MoveRight();
+                else player.PushBack();
+            }
+            else
+            {
+                if(player.currentPos < 2) player.MoveLeft();
+                else player.PushBack();
+            }
+        }
+    }
+
+    void CheckInput(SwipeInput.SwipeType type)
+    {
+        if (canPlay == true){
+            if (type == SwipeInput.SwipeType.LEFT){
+                moveBuffer = MoveBuffer2.LEFT;
+            } 
+            else if (type == SwipeInput.SwipeType.RIGHT){
+                moveBuffer = MoveBuffer2.RIGHT;
+            }
+            else return;  
+        }
+        else return;
+    }
+
+    public void Startgame() // Вызывается кнопкой в главном меню
+    {
+        roundCoins = 0;
+        display.StartGame();
+        canPlay = true;
+    }
+
+    // Функции экранов. TODO: Переписать в общее событие (ивент?)
+    public void CallLoseScreen(){
+        canPlay = false;
+        display.ShowLoseScreen(roundCoins);
+    }
+
+    public void CallWinScreen(){
+        canPlay = false;
+        display.ShowWinScreen(roundCoins);
+    }
+
+    public void ToggleVibration(){
+        vibration = !vibration;
+    }
+
+    public void GoToShop(){
+        SwipeInput.SwipeEvent -= CheckInput;
+        SceneManager.LoadScene("Shop", LoadSceneMode.Single);   
+    }
+
+    public void Restart()
+    {
+        SwipeInput.SwipeEvent -= CheckInput;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name, LoadSceneMode.Single);
+    }
+
+    // TODO: Переписать в отдельный класс кошелька
+    public void AddMoneyToLocalData(){
+        PlayerPrefs.SetInt("Coins", PlayerPrefs.GetInt("Coins") + Mathf.FloorToInt(roundCoins / 10f));
+    }
+
+    public void AddMoneyToLocalDataX3(){
+        // TODO: Точка включения рекламы
+        PlayerPrefs.SetInt("Coins", PlayerPrefs.GetInt("Coins") + Mathf.FloorToInt(roundCoins * 3f / 10f));
+    }
+}
