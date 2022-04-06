@@ -1,0 +1,85 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class GameUI : MonoBehaviour
+{
+    public GameObject MainMenuScreen;
+    public GameObject PauseScreen;
+    public GameObject DeathScreen;
+    public GameObject WinScreen;
+    public GameObject OptionsScreen;
+
+    public Text CoinsTxt;
+
+    public Text DSCoinsTxt;
+    public Text DS3CoinsTxt;
+    public Text WSCoinsTxt;
+    public Text WS3CoinsTxt;
+
+    public void StartGame()
+    {
+        StartCoroutine(StartGameIE());
+    }
+
+    public IEnumerator StartGameIE()
+    {
+        yield return new WaitForSeconds(0.3f);
+        MainMenuScreen.SetActive(false);
+    }
+
+    public void UpdateCoinsOnScreen(int Coins)
+    {
+        CoinsTxt.text = Mathf.FloorToInt(Coins / 10f).ToString();
+    }
+
+    public void ShowMainMenu()
+    {
+        CoinsTxt.text = PlayerPrefs.GetInt("Coins").ToString();
+        MainMenuScreen.SetActive(true);
+        PauseScreen.SetActive(false);
+        DeathScreen.SetActive(false);
+        WinScreen.SetActive(false);
+        OptionsScreen.SetActive(false);
+    }
+
+    public void ShowWinScreen(int Coins)
+    {
+        WSCoinsTxt.text = Mathf.FloorToInt(Coins / 10f * 1.5f).ToString();
+        WS3CoinsTxt.text = Mathf.FloorToInt(Coins / 10f * 3 * 1.5f).ToString();
+        CoinsTxt.text = PlayerPrefs.GetInt("Coins").ToString();
+        StartCoroutine(WinIE());
+    }
+
+    public IEnumerator WinIE()
+    {
+        yield return new WaitForSeconds(0.3f);
+        WinScreen.SetActive(true);
+    }
+
+    public void ShowLoseScreen(int Coins)
+    {
+        DSCoinsTxt.text = Mathf.FloorToInt(Coins / 10f).ToString();
+        DS3CoinsTxt.text = Mathf.FloorToInt(Coins / 10f * 3).ToString();
+        CoinsTxt.text = PlayerPrefs.GetInt("Coins").ToString();
+        StartCoroutine(LoseIE());
+    }
+
+    public IEnumerator LoseIE()
+    {
+        yield return new WaitForSeconds(0.3f);
+        DeathScreen.SetActive(true);
+    }
+
+    public void ShowOptions()
+    {
+        OptionsScreen.SetActive(true);
+        MainMenuScreen.SetActive(false);
+    }
+
+    public void CloseOptions()
+    {
+        OptionsScreen.SetActive(false);
+        MainMenuScreen.SetActive(true);
+    }
+}
