@@ -1,0 +1,305 @@
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+public class Bot : ActiveCar
+{
+    private float rayForwardDistance;
+    private float raySideDistance;
+
+    private Ray rayForward;
+    private Ray rayLeft;
+    private Ray rayRight;
+    private Ray rayLeftForward;
+    private Ray rayRightForward;
+
+    private RaycastHit hitForward;
+    private RaycastHit hitLeft;
+    private RaycastHit hitRight;
+    private RaycastHit hitLeftForward;
+    private RaycastHit hitRightForward;
+
+    public float agressiveValue { get; set; }
+    private bool boostCollecting { get; set; }
+
+    new void Start()
+    {
+        base.Start();
+
+        rayForwardDistance = speed;
+        raySideDistance = PosMultiple;
+
+        agressiveValue = 0;
+
+        boostCollecting = true;
+
+        currentPos = GC.botStartPos;
+        SetStartPosition();
+    }
+
+    new void FixedUpdate()
+    {
+        base.FixedUpdate();
+
+        rayForward = new Ray(tr.position, -tr.forward);
+        rayLeft = new Ray(tr.position, tr.right);
+        rayRight = new Ray(tr.position, -tr.right);
+        rayLeftForward = new Ray(tr.position + tr.right * PosMultiple, -tr.forward);
+        rayRightForward = new Ray(tr.position - tr.right * PosMultiple, -tr.forward);
+
+        if (timer == 0)
+        {
+            rayForwardDistance = speed;
+            bool[] hitsArray = new bool[5];
+
+            if (Physics.Raycast(rayForward, out hitForward, rayForwardDistance))
+            {
+                if (hitForward.collider.gameObject.tag == "Trap")
+                {
+                    // --- --- --- Обсчет лучей --- --- ---
+                    hitsArray[2] = true;
+                    if (Physics.Raycast(rayLeft, out hitLeft, raySideDistance))
+                    {
+                        if (hitLeft.collider.gameObject.tag == "Trap")
+                        {
+                            hitsArray[0] = true;
+                        }
+                        else hitsArray[0] = false;
+                    }
+                    else hitsArray[0] = false;
+
+                    if (Physics.Raycast(rayLeftForward, out hitLeftForward, rayForwardDistance))
+                    {
+                        if (hitLeftForward.collider.gameObject.tag == "Trap")
+                        {
+                            hitsArray[1] = true;
+                        }
+                        else hitsArray[1] = false;
+                    }
+                    else hitsArray[1] = false;
+
+                    if (Physics.Raycast(rayRightForward, out hitRightForward, rayForwardDistance))
+                    {
+                        if (hitRightForward.collider.gameObject.tag == "Trap")
+                        {
+                            hitsArray[3] = true;
+                        }
+                        else hitsArray[3] = false;
+                    }
+                    else hitsArray[3] = false;
+
+                    if (Physics.Raycast(rayRight, out hitRight, raySideDistance))
+                    {
+                        if (hitRight.collider.gameObject.tag == "Trap")
+                        {
+                            hitsArray[4] = true;
+                        }
+                        else hitsArray[4] = false;
+                    }
+                    else hitsArray[4] = false;
+
+                    // Корректировка граничных положений
+                    if (currentPos == 2)
+                    {
+                        hitsArray[0] = true;
+                        hitsArray[1] = true;
+                    }
+                    if (currentPos == -2)
+                    {
+                        hitsArray[3] = true;
+                        hitsArray[4] = true;
+                    }
+
+                    // --- --- --- Логика движений --- --- ---
+                    if (hitsArray[1] == false && hitsArray[3] == false) // Одна преграда на центральных линиях
+                    { 
+                        if (hitsArray[0] == false && hitsArray[4] == false)
+                        {
+                            RandomDirection();
+                        }
+                        else if (hitsArray[0] == true)
+                        {
+                            attack = true;
+                            MoveRight();
+                        }
+                        else if (hitsArray[4] == true)
+                        {
+                            attack = true;
+                            MoveLeft();
+                        }
+                        else {; } // Wait
+                    }
+                    else if (hitsArray[1] == true ^ hitsArray[3] == true) // Две преграды с привязкой по положению
+                    { 
+                        if (hitsArray[1] == true && hitsArray[4] == false)
+                        {
+                            attack = true;
+                            MoveRight();
+                        }
+                        else if (hitsArray[3] == true && hitsArray[0] == false)
+                        {
+                            attack = true;
+                            MoveLeft();
+                        }
+                        else if (hitsArray[1] == true && hitsArray[4] == true && hitsArray[0] == false && currentPos < 1)
+                        {
+                            attack = true;
+                            MoveLeft();
+                        }
+                        else if (hitsArray[3] == true && hitsArray[0] == true && hitsArray[4] == false && currentPos > -1)
+                        {
+                            attack = true;
+                            MoveRight();
+                        }
+                        else {; } // Wait
+                    }
+                    else if (hitsArray[1] == true && hitsArray[3] == true)
+                    {
+                        if (hitsArray[0] == false && hitsArray[4] == false && currentPos == 0)
+                        {
+                            RandomDirection();
+                        }
+                        else if (hitsArray[0] == true && currentPos > 0)
+                        {
+                            attack = true;
+                            MoveRight();
+                        }
+                        else if (hitsArray[4] == true && currentPos < 0)
+                        {
+                            attack = true;
+                            MoveLeft();
+                        }
+                        else {; } // Wait
+                    }
+                }
+            }
+
+            // --- --- --- Подбор бустов --- --- ---
+            if (boostCollecting)
+            {
+                if (Physics.Raycast(rayLeftForward, out hitLeftForward, rayForwardDistance / 2))
+                {
+                    if (hitLeftForward.collider.gameObject.tag == "Boost")
+                    {
+                        if (Physics.Raycast(rayLeft, out hitLeft, raySideDistance))
+                        {
+                            if (hitLeft.collider.gameObject.tag != "Trap")
+                            {
+                                attack = true;
+                                MoveLeft();
+                            }
+                        }
+                        else
+                        {
+                            attack = true;
+                            MoveLeft();
+                        }
+                    }
+                }
+                if (Physics.Raycast(rayRightForward, out hitRightForward, rayForwardDistance / 2))
+                {
+                    if (hitRightForward.collider.gameObject.tag == "Boost")
+                    {
+                        if (Physics.Raycast(rayRight, out hitRight, raySideDistance))
+                        {
+                            if (hitRight.collider.gameObject.tag != "Trap")
+                            {
+                                attack = true;
+                                MoveRight();
+                            }
+                        }
+                        else
+                        {
+                            attack = true;
+                            MoveRight();
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- --- --- Агрессия на игрока --- --- ---
+        agressiveValue -= 0.03f;
+        if (agressiveValue < 0) agressiveValue = 0;
+
+        float mood = Random.Range(0, 200);
+
+        if (mood < agressiveValue && timer == 0)
+        {
+            if (Physics.Raycast(rayRight, out hitRight, raySideDistance))
+                if (hitRight.collider.gameObject.tag == "Player")
+                {
+                    attack = true;
+                    MoveRight();
+                    agressiveValue -= 5;
+                }
+            if (Physics.Raycast(rayLeft, out hitLeft, raySideDistance))
+                if (hitLeft.collider.gameObject.tag == "Player")
+                {
+                    attack = true;
+                    MoveLeft();
+                    agressiveValue -= 5;
+                }
+        }
+    }
+
+    private void RandomDirection()
+    {
+        float ChooseBuff = Random.Range(0, 10);
+        int Choose = Mathf.RoundToInt(ChooseBuff / 10);
+        if (Choose > 0)
+        {
+            attack = true;
+            MoveRight();
+        }
+        else
+        {
+            attack = true;
+            MoveLeft();
+        }
+    }
+
+    public void AddAgression(int Add)
+    {
+        if (timer == 0) agressiveValue += Add;
+    }
+
+    public void SetBoostCollectingTrue()
+    {
+        boostCollecting = true;
+    }
+
+    public void SetBoostCollectingFalse()
+    {
+        boostCollecting = false;
+    }
+
+    public void Restore(float NewX, float PSpeed)
+    {
+        Correction();
+        tr.position = new Vector3(NewX - 20, 2, currentPos * PosMultiple);
+        boostTimer = GC.boostTimer / 2;
+        speed = PSpeed + 5;
+    }
+
+    void OnCollisionEnter(Collision other)
+    {
+        if (other.gameObject.CompareTag("Trap"))
+        {
+            tr.position = new Vector3(0, 2, currentPos * PosMultiple);
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Boost"))
+        {
+            Destroy(other.gameObject);
+            boostTimer = GC.boostTimer;
+            speed += 5;
+        }
+        if (other.gameObject.CompareTag("Finish"))
+        {
+            GC.CallLoseScreen();
+        }
+    }
+}
