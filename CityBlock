@@ -1,0 +1,12 @@
+using UnityEngine;
+
+public class CityBlock : MonoBehaviour
+{
+	  [Range(1, 100)]
+    public int Weight = 50;
+
+    public void Rotate90()
+    {
+        transform.Rotate(0, 90, 0);
+    }
+}
