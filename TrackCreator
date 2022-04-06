@@ -1,0 +1,207 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+public class TrackCreator : MonoBehaviour
+{
+    [SerializeField] private List<CityBlock> tilePrefabs;
+    [SerializeField] private List<CityBlock> tilePrefabsMirrored;
+
+    [SerializeField] private List<Trap> traps;
+
+    [SerializeField] private List<Booster> boosts;
+
+    [SerializeField] private int mapSize = 10;
+    [SerializeField] private int trapsCount = 10;
+    [SerializeField] private float posMultiple = 4;
+    [SerializeField] private int boostCount = 10;
+
+    private CityBlock[,] spawnedTiles;
+    private Trap[,] spawnedTraps;
+    private Booster[,] spawnedBoosts;
+
+    void Start()
+    {
+    	int countBeforeAdding = tilePrefabs.Count;
+        for (int i = 0; i < countBeforeAdding; i++){
+            CityBlock clone;
+        	clone = Instantiate(tilePrefabs[i], tilePrefabs[i].transform.position + Vector3.right, Quaternion.identity);
+            clone.Rotate90();
+            clone.Rotate90();
+            tilePrefabsMirrored.Add(clone);
+            Destroy(clone);
+        }
+        Generate();
+    }
+
+    private void Generate(){
+
+        spawnedTiles = new CityBlock[mapSize, 2];
+        for(int i = 0; i<mapSize; i++){
+            for(int k = 0; k<2; k++){
+                PlaceTile(i, k);
+            }
+        }
+
+        spawnedTraps = new Trap[trapsCount,2];
+        for(int i = 0; i<trapsCount; i++){
+            PlaceTrap(i);
+        }
+
+        spawnedBoosts = new Booster[boostCount,2];
+        for(int i = 0; i<boostCount; i++){
+            PlaceBoost(i);
+        } 
+    }
+
+    private void PlaceBoost(int x)
+    {
+        Booster selectedBoost;
+        Vector3 position1, position2;
+
+        int i = Random.Range(-2, 2);
+        int k = Random.Range(-2, 2);
+
+        while (i == k){
+            k = Random.Range(-2, 2);
+        }
+
+        int j = Random.Range(0, 2);
+        if (j >= 1){
+            position1 = new Vector3(100 + x * 40, 0,  i * posMultiple);
+            selectedBoost = boosts[0];
+            spawnedBoosts[x, 0] = Instantiate(selectedBoost, position1, selectedBoost.transform.rotation);
+        }
+        else{
+            position1 = new Vector3(100 + x * 40, 0,  i * posMultiple);
+            position2 = new Vector3(100 + x * 40, 0,  k * posMultiple);
+
+            selectedBoost = boosts[0];
+            spawnedBoosts[x, 0] = Instantiate(selectedBoost, position1, selectedBoost.transform.rotation);
+            selectedBoost = boosts[0];
+            spawnedBoosts[x, 1] = Instantiate(selectedBoost, position2, selectedBoost.transform.rotation);
+
+        }
+    }
+
+    private void PlaceTile(int x, int y)
+    {
+        CityBlock selectedTile;
+        Vector3 position;
+
+        if (y == 0){
+        	selectedTile = GetRandomTile(tilePrefabs);
+        	position = new Vector3(x * 100, 0, 35);
+        } 
+        else{
+        	selectedTile = GetRandomTile(tilePrefabsMirrored);
+            position = new Vector3(x * 100, 0, -35);
+        }
+        spawnedTiles[x, y] = Instantiate(selectedTile, position, selectedTile.transform.rotation);
+    }
+
+    private CityBlock GetRandomTile(List<CityBlock> availableTiles)
+    {
+        List<float> chances = new List<float>();
+        for (int i = 0; i < availableTiles.Count; i++)
+        {
+            chances.Add(availableTiles[i].Weight);
+        }
+
+        float value = Random.Range(0, chances.Sum());
+        float sum = 0;
+
+        for (int i = 0; i < chances.Count; i++)
+        {
+            sum += chances[i];
+            if (value < sum)
+            {
+                return availableTiles[i];
+            }
+        }
+        return availableTiles[availableTiles.Count-1];
+    }
+
+    private void PlaceTrap(int x)
+    {
+        Trap selectedTrap;
+        Vector3 position1, position2;
+
+        int i = Random.Range(-2, 2);
+        int k = Random.Range(-2, 2);
+
+        while (i == k){
+            k = Random.Range(-2, 2);
+        }
+
+        int j = Random.Range(0, 2);
+        if (j >= 1){
+            position1 = new Vector3(100 + x * 40, 0,  i * posMultiple);
+            selectedTrap = GetRandomTrap(traps);
+            spawnedTraps[x, 0] = Instantiate(selectedTrap, position1, selectedTrap.transform.rotation);
+        }
+        else{
+            position1 = new Vector3(100 + x * 40, 0,  i * posMultiple);
+            position2 = new Vector3(100 + x * 40, 0,  k * posMultiple);
+
+            selectedTrap = GetRandomTrap(traps);
+            spawnedTraps[x, 0] = Instantiate(selectedTrap, position1, selectedTrap.transform.rotation);
+            selectedTrap = GetRandomTrap(traps);
+            spawnedTraps[x, 1] = Instantiate(selectedTrap, position2, selectedTrap.transform.rotation);
+
+        }
+    }
+
+    private Trap GetRandomTrap(List<Trap> availableTiles)
+    {
+        List<float> chances = new List<float>();
+        for (int i = 0; i < availableTiles.Count; i++)
+        {
+            chances.Add(availableTiles[i].Weight);
+        }
+
+        float value = Random.Range(0, chances.Sum());
+        float sum = 0;
+
+        for (int i = 0; i < chances.Count; i++)
+        {
+            sum += chances[i];
+            if (value < sum)
+            {
+                return availableTiles[i];
+            }
+        }
+        return availableTiles[availableTiles.Count-1];
+    }
+
+    public void Restore(){ // Апендикс на удаление
+
+        foreach (CityBlock spawnedTile in spawnedTiles)
+        {
+            if (spawnedTile != null) Destroy(spawnedTile.gameObject);
+        }
+
+        for(int i = 0; i < spawnedTraps.GetLength(0); i++)
+        {
+            for (int k = 0; k < 2; k++){
+                if (spawnedTraps[i, k] != null)
+                Destroy(spawnedTraps[i, k].gameObject); 
+            }
+        }
+        Array.Clear(spawnedTraps, 0, spawnedTraps.GetLength(0)*2);
+
+        for(int i = 0; i < spawnedBoosts.GetLength(0); i++)
+        {
+            for (int k = 0; k < 2; k++){
+                if (spawnedBoosts[i, k] != null)
+                Destroy(spawnedBoosts[i, k].gameObject); 
+            }
+        }
+        Array.Clear(spawnedBoosts, 0, spawnedBoosts.GetLength(0)*2);
+
+        Generate();
+    }
+   
+}
