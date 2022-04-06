@@ -1,0 +1,55 @@
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+public class PassiveCar : MonoBehaviour
+{
+	public float speed = 10;
+
+	private Rigidbody rb;
+    private Transform tr;
+
+    private GameObject[] GC_obj;
+    private Gameplay GC;
+
+    private Ray rayForward;
+    private RaycastHit HitForward;
+    private float RayForwardDistance;
+
+    void Start()
+    {
+    	rb = GetComponent<Rigidbody>();
+        tr = GetComponent<Transform>();
+
+        GC_obj = GameObject.FindGameObjectsWithTag("GameController");
+        GC = GC_obj[0].GetComponent<Gameplay>();
+
+        speed += Random.Range(-3, 3);
+
+        RayForwardDistance = speed/3;
+
+        rb.velocity = new Vector3(speed, rb.velocity.y, 0);
+    }
+
+    void Update()
+    {
+        RayForwardDistance = speed;
+    	rayForward = new Ray(tr.position + new Vector3(0, 1, 0),  tr.right);
+        if (GC.canPlay){
+            if (Physics.Raycast(rayForward, out HitForward, RayForwardDistance)){
+                if (HitForward.collider.gameObject.tag == "Trap"){
+                    rb.velocity = HitForward.collider.gameObject.GetComponent<Rigidbody>().velocity;  
+                }
+                else{
+                    rb.velocity = new Vector3(speed, rb.velocity.y, 0);
+                }
+            }
+            else{
+            	rb.velocity = new Vector3(speed, rb.velocity.y, 0);
+            }
+        }
+        else{
+            rb.velocity =  Vector3.zero;
+        }
+        
+    }
+}
