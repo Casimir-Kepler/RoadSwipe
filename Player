@@ -1,0 +1,62 @@
+using UnityEngine;
+
+public class Player : ActiveCar
+{
+    public int CurrentSkin;
+    public GameObject[] Skins;
+    private GameObject Skin;
+
+    public bool DeclareReady { get; set; }
+
+    new void Start()
+    {
+        base.Start();
+
+        CurrentSkin = PlayerPrefs.GetInt("CurrentCar");
+        Skin = Instantiate(Skins[CurrentSkin], new Vector3(0, 0, 0), Skins[CurrentSkin].transform.rotation);
+        Skin.transform.SetParent(tr, false);
+
+        currentPos = GC.playerStartPos;
+        SetStartPosition();
+    }
+
+    new void FixedUpdate()
+    {
+        base.FixedUpdate();
+
+        if (GC.canPlay && timer == 0) DeclareReady = true;
+        else DeclareReady = false;
+    }
+
+    public void StartAttack()
+    {
+        attack = true;
+    }
+
+    void OnCollisionEnter(Collision other)
+    {
+        if (other.gameObject.CompareTag("Bot"))
+        {
+            GC.CheckCollision();
+        }
+        if (other.gameObject.CompareTag("Trap"))
+        {
+            speed = GC.startSpeed;
+            GC.CallLoseScreen();
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Boost"))
+        {
+            Destroy(other.gameObject);
+            boostTimer = GC.boostTimer;
+            speed += 5;
+        }
+        if (other.gameObject.CompareTag("Finish"))
+        {
+            GC.CallWinScreen();
+        }
+    }
+}
